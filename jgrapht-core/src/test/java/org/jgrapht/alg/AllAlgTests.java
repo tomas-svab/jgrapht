@@ -85,6 +85,7 @@ public final class AllAlgTests
         suite.addTest(new TestSuite(KSPDiscardsValidPathsTest.class));
         suite.addTestSuite(IsomorphismInspectorTest.class);
         suite.addTest(new TestSuite(EdmondsKarpMaximumFlowTest.class));
+        suite.addTest(new TestSuite(DinicMaximumFlowTest.class));
         suite.addTest(new TestSuite(ChromaticNumberTest.class));
         suite.addTest(new TestSuite(EulerianCircuitTest.class));
         suite.addTest(new TestSuite(HamiltonianCycleTest.class));
@@ -93,6 +94,8 @@ public final class AllAlgTests
         suite.addTest(new TestSuite(EdmondsBlossomShrinkingTest.class));
         suite.addTest(new TestSuite(MinSourceSinkCutTest.class));
         suite.addTest(new TestSuite(HopcroftKarpBipartiteMatchingTest.class));
+        suite.addTest(new TestSuite(HopcroftKarpSimpleTest.class));
+        suite.addTest(new TestSuite(HeavyLightDecompositionTest.class));
         
         // $JUnit-END$
         return suite;
