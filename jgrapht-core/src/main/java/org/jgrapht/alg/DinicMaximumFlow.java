@@ -13,9 +13,43 @@ import org.jgrapht.DirectedGraph;
 public final class DinicMaximumFlow< V, E > {
 
 	// ---------------------------------------------------------------
-	// Network
+	// Data
 	// ---------------------------------------------------------------
 
+	private static final long INF = 1000000000000l;
+	public static final double DEFAULT_EPSILON = 0.000000001;
+
+	private Network network;
+
+	/**
+	 * Holds distances from source to given vertices (also represents
+	 * in which layer is the vertex).
+	 */
+	private int dist[];
+
+	/**
+	 * Used as temporary storage for modified array graph.firstEdge.
+	 */
+	private int currFirstEdge[];
+	
+	/**
+	 * Epsilon value to determine minimal value of flow.
+	 */
+	private double epsilon;
+	
+	private Double maximumFlow = null;
+
+	private int currentSource = -1;
+
+	private int currentSink = -1;
+
+	/** Current flow on every edge. */
+	private double flow[];
+	
+	// ---------------------------------------------------------------
+	// Network
+	// ---------------------------------------------------------------
+		
 	/**
 	 * Data class for flow network that can be used by network-flow
 	 * algorithms to compute maximal flow (and other related quantities).
@@ -49,9 +83,6 @@ public final class DinicMaximumFlow< V, E > {
 
 		/** To which vertex is the edge headed (addressed by edges). */
 		public int to[];
-
-		/** Current flow on every edge. */
-		public double flow[];
 
 		/** Capacity of every edge. */
 		public double capacity[];
@@ -101,7 +132,6 @@ public final class DinicMaximumFlow< V, E > {
 			this.numEdges = 2 * edges.size();
 			next = new int [ numEdges ];
 			to = new int[ numEdges ];
-			flow = new double[ numEdges ];
 			capacity = new double[ numEdges ];
 			for ( int i = 0; i < numVertices; ++i ) {
 				firstEdge[ i ] = -1;
@@ -128,14 +158,12 @@ public final class DinicMaximumFlow< V, E > {
 		{
 			to[ currentEdgeID ] = v;
 			capacity[ currentEdgeID ] = c;
-			flow[ currentEdgeID ] = 0;
 			next[ currentEdgeID ] = firstEdge[ u ];
 			firstEdge[ u ] = currentEdgeID;
 			++currentEdgeID;
 
 			to[ currentEdgeID ] = u;
 			capacity[ currentEdgeID ] = c;
-			flow[ currentEdgeID ] = 0;
 			next[ currentEdgeID ] = firstEdge[ v ];
 			firstEdge[ v ] = currentEdgeID;
 			++currentEdgeID;
@@ -150,37 +178,6 @@ public final class DinicMaximumFlow< V, E > {
 			return edgeID ^ 1;
 		}
 	};
-
-	// ---------------------------------------------------------------
-	// Data
-	// ---------------------------------------------------------------
-
-	private static final long INF = 1000000000000l;
-	public static final double DEFAULT_EPSILON = 0.000000001;
-
-	private Network network;
-
-	/**
-	 * Holds distances from source to given vertices (also represents
-	 * in which layer is the vertex).
-	 */
-	private int dist[];
-
-	/**
-	 * Used as temporary storage for modified array graph.firstEdge.
-	 */
-	private int currFirstEdge[];
-	
-	/**
-	 * Epsilon value to determine minimal value of flow.
-	 */
-	private double epsilon;
-	
-	private Double maximumFlow = null;
-
-	private int currentSource = -1;
-
-	private int currentSink = -1;
 
 	// ---------------------------------------------------------------
 	// Public methods
@@ -206,9 +203,18 @@ public final class DinicMaximumFlow< V, E > {
 					"invalid capacity (must be non-negative)");
 			}
 		}
-			
+		
 		this.network = new Network( graph );
 		dist = new int[ network.numVertices ];
+		currFirstEdge = new int[ network.numVertices ];
+		this.epsilon = epsilon;
+	}
+	
+	DinicMaximumFlow ( Network network, double epsilon )
+	{		
+		this.network = network;
+		dist = new int[ network.numVertices ];
+		flow = new double[ network.numEdges ];
 		currFirstEdge = new int[ network.numVertices ];
 		this.epsilon = epsilon;
 	}
@@ -286,7 +292,7 @@ public final class DinicMaximumFlow< V, E > {
 		Map< E, Double > f = new HashMap();
 		for ( int edgeID = 0; edgeID < network.numEdges; edgeID += 2 ) {
 			E edge = (E)network.idToEdge.get( edgeID );
-			f.put( edge, Double.valueOf( network.flow[ edgeID ] ) );
+			f.put( edge, Double.valueOf( flow[ edgeID ] ) );
 		}
 		
 		return Collections.unmodifiableMap( f );
@@ -320,6 +326,11 @@ public final class DinicMaximumFlow< V, E > {
 		return (V)network.idToVertex.get( currentSink );
 	}
 	
+	public Network getNetwork ()
+	{
+		return network;
+	}
+	
 	// ---------------------------------------------------------------
 	// Private methods
 	// ---------------------------------------------------------------
@@ -342,7 +353,7 @@ public final class DinicMaximumFlow< V, E > {
 			int u = q.poll();
 			for ( int e = network.firstEdge[ u ]; e >= 0; e = network.next[ e ] ) {
 				int v = network.to[ e ];
-				if ( network.flow[ e ] < network.capacity[ e ] && dist[ v ] == -1 ) {
+				if ( flow[ e ] < network.capacity[ e ] && dist[ v ] == -1 ) {
 					dist[ v ] = dist[ u ] + 1;
 					if ( v != sinkID ) {
 						q.add( v );
@@ -363,12 +374,12 @@ public final class DinicMaximumFlow< V, E > {
 
 		for ( int e = currFirstEdge[ vertexID ]; e >= 0; e = network.next[ e ], currFirstEdge[ vertexID ] = e ) {
 			int nextVertexID = network.to[ e ];
-			if ( network.flow[ e ] < network.capacity[ e ] && dist[ nextVertexID ] == dist[ vertexID ] + 1 ) {
-				double newMinFlow = Math.min( network.capacity[ e ] - network.flow[ e ], minFlowOnPath );
+			if ( flow[ e ] < network.capacity[ e ] && dist[ nextVertexID ] == dist[ vertexID ] + 1 ) {
+				double newMinFlow = Math.min( network.capacity[ e ] - flow[ e ], minFlowOnPath );
 				double newFlow = findDeltaFlow( nextVertexID, sinkID, newMinFlow ); 
 				if ( newFlow > 0 ) {
-					network.flow[ e ] += newFlow;
-					network.flow[ network.getBackwardEdge( e ) ] -= newFlow;
+					flow[ e ] += newFlow;
+					flow[ network.getBackwardEdge( e ) ] -= newFlow;
 					return newFlow;
 				}
 			}
