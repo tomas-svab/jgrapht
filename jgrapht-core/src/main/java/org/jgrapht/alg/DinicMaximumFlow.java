@@ -194,7 +194,7 @@ public final class DinicMaximumFlow< V, E > {
 		if ( graph == null ) {
 			throw new NullPointerException( "network is null" );
 		}
-		if ( epsilon <= 0) {
+		if ( epsilon <= 0 ) {
 			throw new IllegalArgumentException( "invalid epsilon (must be positive)" );
 		}
 		for ( E e : graph.edgeSet() ) {
@@ -211,7 +211,15 @@ public final class DinicMaximumFlow< V, E > {
 	}
 	
 	DinicMaximumFlow ( Network network, double epsilon )
-	{		
+	{
+		// verify input:
+		if ( network == null ) {
+			throw new NullPointerException( "network is null" );
+		}
+		if ( epsilon <= 0 ) {
+			throw new IllegalArgumentException( "invalid epsilon (must be positive)" );
+		}
+		
 		this.network = network;
 		dist = new int[ network.numVertices ];
 		flow = new double[ network.numEdges ];
